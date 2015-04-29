@@ -1,0 +1,3 @@
+[submodule "toaster"]
+	path = toaster
+	url = https://github.com/nels-o/toaster
