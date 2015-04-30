@@ -27,8 +27,6 @@ auto getIcon(string url) {
 class ToasterSwitch {
     void off() {
         if (_handler) _handler();
-        import std.c.windows.windows;
-        MessageBoxW(null, "TEXT", "TITLE", MB_OK);
     }
 
     private void delegate() _handler;
