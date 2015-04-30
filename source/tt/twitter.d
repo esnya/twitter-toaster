@@ -5,13 +5,13 @@ import std.conv;
 import std.digest.sha;
 import std.net.curl;
 import std.range;
-import std.typecons;
+import tt.typecons;
 import std.uri;
 import tt.hmac;
 
 //version = OpenBrowser;
 
-alias Token = tuple!(string, "key", string, "secret");
+alias Token = Tuple!(string, "key", string, "secret");
 
 version(unittest) {
     enum Consumer = Token(cast(string[2])std.string.splitLines(import("consumer.token"))[0 .. 2]);
@@ -91,7 +91,7 @@ auto oauthHTTP(string method, string[string] signed, string host = "api.twitter.
     return con;
 }
 
-auto oauth(string method, string url, string consumer_key, string consumer_secret, string token, string token_secret, string[string] params = null, string[string] query = null) {
+auto oauth(string consumer_key, string consumer_secret, string token, string token_secret, string method, string url, string[string] params = null, string[string] query = null) {
     import std.string;
 
     params["oauth_consumer_key"] = consumer_key;
@@ -113,59 +113,84 @@ auto oauth(string method, string url, string consumer_key, string consumer_secre
             assert(0);
     }
 }
-auto oauth(string method, string url, string consumer_key, string consumer_secret, string[string] params = null, string[string] query = null) {
-    return oauth(method, url, consumer_key, consumer_secret, null, null, params, query);
+auto oauth(string consumer_key, string consumer_secret, string method, string url, string[string] params = null, string[string] query = null) {
+    return oauth(consumer_key, consumer_secret, null, null, method, url, params, query);
+}
+auto oauth(T)(T tokens, string method, string url, string[string] params = null, string[string] query = null) if (isTuple!T) {
+    static if (tokens.length < 4) {
+        return oauth(tokens[0 .. 2], method, url, params, query);
+    } else {
+        return oauth(tokens[0 .. 4], method, url, params, query);
+    }
 }
 
 auto requestToken(string consumer_key, string consumer_secret, string callback, string[string] params = null) {
-    return oauth("POST", "https://api.twitter.com/oauth/request_token",
-            consumer_key, consumer_secret,
-            params, ["oauth_callback": callback]);
+    return oauth(consumer_key, consumer_secret,
+            "POST", "https://api.twitter.com/oauth/request_token",
+            params, ["oauth_callback": callback]).formDecode()
+        .tuple!(string, "oauth_token",
+                string, "oauth_token_secret")();
+}
+auto requestToken(T)(T consumer, string callback, string[string] params = null) if (isTuple!T) {
+    return Tuple!(
+            string, "consumer_key",
+            string, "consumer_secret",
+            string, "oauth_token",
+            string, "oauth_token_secret",
+            )(consumer.expand, requestToken(consumer[0 .. 2], callback, params).expand);
 }
 unittest {
-    auto request_token = requestToken(Consumer.key, Consumer.secret, "oob").formDecode();
-    assert("oauth_token" in request_token);
-    assert("oauth_token_secret" in request_token);
-    assert(request_token["oauth_callback_confirmed"] == "true");
+    auto request_token = Consumer.requestToken("oob");
+    assert(request_token[0 .. 2] == Consumer[0 .. 2]);
+    assert(request_token.oauth_token);
+    assert(request_token.oauth_token_secret);
+    //assert(request_token.oauth_callback_confirmed == "true");
 }
 
 auto authenticate(string token) {
-    version (Windows) {
-        import std.process;
-        auto ret = executeShell("start https://api.twitter.com/oauth/authenticate?oauth_token=" ~ token.encodeComponent());
-        if (ret.status != 0) throw new Exception("Failed to open browser");
-    } else {
-        static assert(0);
-    }
+    import std.process;
+    browse("https://api.twitter.com/oauth/authenticate?oauth_token=" ~ token.encodeComponent());
 }
-unittest {
-    version (OpenBrowser) {
-        auto request_token = requestToken(Consumer.key, Consumer.secret, "oob").formDecode();
-        authenticate(request_token["oauth_token"]);
-    }
+auto authenticate(T)(T tokens) if (isTuple!T) {
+    authenticate(tokens.oauth_token);
+    return tokens;
 }
+//unittest {
+//    version (OpenBrowser) {
+//        auto request_token = requestToken(Consumer.key, Consumer.secret, "oob").formDecode();
+//        authenticate(request_token["oauth_token"]);
+//    }
+//}
 
-auto accessToken(string consumer_key, string consumer_secret, string token, string token_secret, string verifier, string[string] params = null) {
-    return oauth("POST", "https://api.twitter.com/oauth/access_token",
-            consumer_key, consumer_secret, token, token_secret,
+auto accessToken(string consumer_key, string consumer_secret, string token, string token_secret, string verifier = null, string[string] params = null) {
+    import std.stdio;
+    import std.string;
+
+    return oauth(consumer_key, consumer_secret, token, token_secret,
+            "POST", "https://api.twitter.com/oauth/access_token",
             params, [
-                "oauth_verifier": verifier
-            ]);
+                "oauth_verifier": verifier ? verifier : (write("PIN> "), readln().chomp()),
+            ])
+        .formDecode()
+        .tuple!(string, "oauth_token",
+                string, "oauth_token_secret",
+                string, "screen_name")();
 
+}
+auto accessToken(T)(T tokens, string verifier = null, string[string] params = null) if (isTuple!T) {
+    return Tuple!(string, "consumer_key",
+            string, "consumer_secret",
+            string, "oauth_token",
+            string, "oauth_token_secret",
+            string, "screen_name")(tokens[0 .. 2],
+                accessToken(tokens[0 .. 4], verifier, params).expand);
 }
 unittest {
     version (OpenBrowser) {
-        import std.stdio;
-        import std.string;
+        auto access_token = Consumer.requestToken("oob")
+            .authenticate()
+            .accessToken();
 
-        auto request_token = requestToken(Consumer.key, Consumer.secret, "oob").formDecode();
-        authenticate(request_token["oauth_token"]);
-        
-        write("PIN> ");
-        auto pin = readln().chomp();
-        auto access_token = accessToken(Consumer.key, Consumer.secret,
-                request_token["oauth_token"], request_token["oauth_token_secret"],
-                pin).formDecode();
+        std.stdio.writeln(access_token);
     }
-
 }
