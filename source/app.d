@@ -1,6 +1,6 @@
-import std.stdio;
+import tt.toaster;
 
 void main()
 {
-	writeln("Edit source/app.d to start your project.");
+    toaster();
 }

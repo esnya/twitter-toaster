@@ -3,6 +3,7 @@
 	"description": "Toast tweets on timeline for windows.",
 	"copyright": "Copyright © 2015, ukatama",
 	"authors": ["ukatama"],
+    "dflags": ["-Jdata"],
 	"dependencies": {
 	}
 }
