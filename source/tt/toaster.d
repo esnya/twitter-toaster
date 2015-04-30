@@ -6,15 +6,20 @@ import std.range;
 import std.stdio;
 import std.string;
 import tt.twitter;
+import std.process;
 
-void toast(string title, string message, string image = null) {
-    import std.process;
 
+auto toast(string title, string message, string image, bool wait = false) {
     auto cmd = ["toaster/toast/bin/Release/toast.exe", "-t", title, "-m", message];
 
     if (image.length > 0) cmd ~= ["-p", image];
+    if (wait) cmd ~= "-w";
 
-    cmd.spawnProcess();
+    return cmd.spawnProcess();
+}
+auto toast(alias callback, T...)(string title, string message, string image, T args) {
+    import std.parallelism;
+    task!((title, message, image, args) => callback(toast(title, message, image, true).wait(), args))(title, message, image, args).executeInNewThread();
 }
 
 auto getIcon(string url) {
@@ -137,9 +142,14 @@ auto getStatus(string consumer_key, string consumer_secret, string token, string
 }
 
 auto toastStatus(JSONValue s) {
-    auto title = s["user"]["screen_name"].str ~ '@' ~ s["user"]["screen_name"].str;
+    import std.conv;
+    import std.process;
+
+    auto name = s["user"]["name"].str;
+    auto screen_name = s["user"]["screen_name"].str;
+    auto title = name ~ '@' ~ screen_name;
     auto message = s["text"].str;
     auto icon = s["user"]["profile_image_url"].str.getIcon();
     writeln("status: [", title, "] ", message);
-    toast(title, message, icon);
+    toast!((status, url) { if (status == 0) {spawnShell("start " ~ url);}})(title, message, icon, "https://twitter.com/" ~ screen_name ~ "/status/" ~ s["id"].integer.to!string());
 }
