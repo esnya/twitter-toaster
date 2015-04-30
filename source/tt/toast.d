@@ -9,7 +9,7 @@ auto toast(string title, string message, string image, bool wait = false) {
     if (image.length > 0) cmd ~= ["-p", image];
     if (wait) cmd ~= "-w";
 
-    return cmd.spawnProcess();
+    return cmd.spawnProcess(null, Config.suppressConsole);
 }
 auto toast(alias callback, T...)(string title, string message, string image, T args) {
     task!((title, message, image, args) => callback(toast(title, message, image, true).wait(), args))(title, message, image, args).executeInNewThread();

@@ -2,8 +2,21 @@
 	"name": "twitter-toaster",
 	"description": "Toast tweets on timeline for windows.",
 	"copyright": "Copyright © 2015, ukatama",
+    "configurations": [
+        {
+            "name": "default",
+            "targetType": "executable",
+            "dflags": ["-Jdata"]
+        },
+        {
+            "name": "windows-desktop",
+            "targetType": "executable",
+            "dflags": ["-Jdata"],
+            "lflags": ["-L/EXET:NT/SU:WINDOWS"],
+            "versions": ["WindowsDesktop"]
+        }
+    ],
 	"authors": ["ukatama"],
-    "dflags": ["-Jdata"],
 	"dependencies": {
 	}
 }

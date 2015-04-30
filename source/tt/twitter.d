@@ -162,14 +162,36 @@ auto authenticate(T)(T tokens) if (isTuple!T) {
 //    }
 //}
 
+version (WindowsDesktop) {
+    auto readPIN() {
+        import std.c.windows.windows;
+
+        AllocConsole();
+        scope(exit) FreeConsole();
+
+        uint n;
+        WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), "PIN> ".ptr, 5, &n, null);
+
+        char[7] pin;
+        ReadConsoleA(GetStdHandle(STD_INPUT_HANDLE), pin.ptr, 7, &n, null);
+        return pin.idup;
+    }
+} else {
+    auto readPIN() {
+        import std.stdio;
+        import std.string;
+
+        write("PIN> ");
+        return readln().chomp();
+    }
+}
+
 auto accessToken(string consumer_key, string consumer_secret, string token, string token_secret, string verifier = null, string[string] params = null) {
-    import std.stdio;
-    import std.string;
 
     return oauth(consumer_key, consumer_secret, token, token_secret,
             "POST", "https://api.twitter.com/oauth/access_token",
             params, [
-                "oauth_verifier": verifier ? verifier : (write("PIN> "), readln().chomp()),
+                "oauth_verifier": verifier ? verifier : readPIN(),
             ])
         .formDecode()
         .tuple!(string, "oauth_token",
