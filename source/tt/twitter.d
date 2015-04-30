@@ -14,7 +14,7 @@ import tt.hmac;
 alias Token = tuple!(string, "key", string, "secret");
 
 version(unittest) {
-    enum Consumer = Token(cast(string[2])std.string.splitLines(import("consumer.txt"))[0 .. 2]);
+    enum Consumer = Token(cast(string[2])std.string.splitLines(import("consumer.token"))[0 .. 2]);
 }
 
 auto timestamp(S = string)() {

@@ -1,11 +1,13 @@
 module tt.toaster;
 
 import std.algorithm;
+import std.conv;
 import std.json;
 import std.range;
 import std.stdio;
 import std.string;
 import tt.twitter;
+import tt.filecache;
 import std.process;
 
 
@@ -38,19 +40,21 @@ auto getIcon(string url) {
     return path.absolutePath;
 }
 
-void toaster() {
-    enum Consumer = Token(cast(string[2])std.string.splitLines(import("consumer.txt"))[0 .. 2]);
-
-    auto request_token = requestToken(Consumer.key, Consumer.secret, "oob").formDecode();
+auto getAccessToken(string consumer_key, string consumer_secret) {
+    auto request_token = requestToken(consumer_key, consumer_secret, "oob").formDecode();
 
     authenticate(request_token["oauth_token"]);
 
     write("PIN> ");
     auto pin = readln().chomp();
-
-    auto access_token = accessToken(Consumer.key, Consumer.secret,
+    return accessToken(consumer_key, consumer_secret,
             request_token["oauth_token"], request_token["oauth_token_secret"],
             pin).formDecode();
+}
+
+void toaster() {
+    enum Consumer = Token(cast(string[2])std.string.splitLines(import("consumer.token"))[0 .. 2]);
+    auto access_token = cache!getAccessToken("data/access.token", Consumer.key, Consumer.secret);
 
     writeln(access_token);
 
@@ -133,7 +137,6 @@ auto streaming(string consumer_key, string consumer_secret, string token, string
 }
 
 auto getStatus(string consumer_key, string consumer_secret, string token, string token_secret, long id) {
-    import std.conv;
     return oauth("GET", "https://api.twitter.com/1.1/statuses/show.json",
             consumer_key, consumer_secret,
             token, token_secret, null, [
