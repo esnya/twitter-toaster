@@ -5,7 +5,7 @@
     "configurations": [
         {
             "name": "default",
-            "targetType": "executable",
+            "targetType": "autodetect",
             "dflags": ["-Jdata"]
         },
         {

@@ -24,7 +24,19 @@ auto getIcon(string url) {
     return path.absolutePath;
 }
 
-void toaster() {
+class ToasterSwitch {
+    void off() {
+        if (_handler) _handler();
+        import std.c.windows.windows;
+        MessageBoxW(null, "TEXT", "TITLE", MB_OK);
+    }
+
+    private void delegate() _handler;
+}
+
+void toaster(ToasterSwitch s = null) {
+    writeln("Start toasting");
+
     enum Consumer = Token(cast(string[2])std.string.splitLines(import("consumer.token"))[0 .. 2]);
     auto tokens = cache!((Token a) => a.requestToken("oob").authenticate().accessToken())("data/access.token", Consumer);
 
@@ -43,10 +55,13 @@ void toaster() {
 
     toast(name, "Twitter-Toaster is ready!", profile_image_url.getIcon());
 
+    bool on = true;
+    if (s) s._handler = () { on = false; };
     
-    while (1) {
+    while (on) {
         try {
             foreach (event; tokens.streaming()) {
+                if (!on) return;
                 if ("text" in event) {
                     event.toastStatus();
                 }
