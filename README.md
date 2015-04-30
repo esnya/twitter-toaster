@@ -1,6 +1,6 @@
 # Twitter Toaster
 
-Show user timeline into toast on Windows 8.
+Show your twitter user timeline into toast on Windows 8.
 This application is jsut for my private use.
 
 ## Thanks to ...
